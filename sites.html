@@ -2,174 +2,195 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>Nightscout Monitor Wall</title>
+<title>GH Sites with Gap Highlight</title>
+<link rel="icon" href="favicon.ico">
+<link rel="shortcut icon" href="favicon.ico">
+<link rel="apple-touch-icon" href="gh-icon-vs.png">
 <meta name="theme-color" content="#121212">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body{
-  margin:0;
+body {
+  margin: 0;
+  background: #121212;
+  font-family: sans-serif;
+  overscroll-behavior: none;
+}
+
+table {
+  width: 100%;
+  max-width: 1450px;
+  margin: auto;
+  border-collapse: collapse;
+}
+
+td {
+  padding: 0;
+}
+
+iframe {
+  width: 100%;
+  height: 500px;
+  border: 4px solid #2c2c2e;
+  display: block;
+  border-radius: 12px;
+  transition: border 0.4s;
+  position: relative;
+}
+
+/* Overlay for BG + arrow */
+.overlay {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  color: white;
+  font-weight: bold;
+  font-size: 18px;
+  text-shadow: 0 0 4px #000;
+  pointer-events: none;
+}
+
+/* Splash screen */
+#splash {
+  position: fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
   background:#121212;
-  color:white;
-  font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+  transition: opacity 0.4s ease;
 }
 
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(360px,1fr));
-  gap:14px;
-  padding:14px;
+#splash img {
+  width: 90px;
+  height: 90px;
+  opacity: 0.9;
 }
-
-.tile{
-  background:#1c1c1e;
-  border-radius:16px;
-  padding:14px;
-  border:2px solid #2c2c2e;
-  transition:.25s;
-}
-
-.name{
-  font-size:13px;
-  opacity:.7;
-}
-
-.value{
-  font-size:44px;
-  font-weight:600;
-}
-
-.delta{
-  font-size:18px;
-  opacity:.8;
-}
-
-.age{
-  font-size:13px;
-  opacity:.6;
-}
-
-canvas{
-  margin-top:8px;
-}
-
 </style>
 </head>
 
 <body>
-<div class="grid" id="grid"></div>
+
+<!-- Splash Screen -->
+<div id="splash">
+  <img src="ns-icon.png" alt="NS">
+</div>
+
+<table>
+  <tr><td><iframe src="https://mstry9.nsromania.info/?token=read1-7bcf2859f8c8f39a" loading="lazy" referrerpolicy="no-referrer"></iframe></td></tr>
+  <tr><td><iframe src="https://mstry9dell.duckdns.org:1338/?token=localread-a0cc5be899ab88f6" loading="lazy" referrerpolicy="no-referrer"></iframe></td></tr>
+  <tr><td><iframe src="https://mstry9azure.azurewebsites.net/?token=read1-75f11cf6fb86a6ee" loading="lazy" referrerpolicy="no-referrer"></iframe></td></tr>
+  <tr><td><iframe src="https://mstry9online.nsromania.info/?token=read1-cee46c0510d61c50" loading="lazy" referrerpolicy="no-referrer"></iframe></td></tr>
+  <tr><td><iframe src="https://mstry9google.nightscoutfree.com/?token=read1-85949d1e3fd02e59" loading="lazy" referrerpolicy="no-referrer"></iframe></td></tr>
+  <tr><td><iframe src="https://mstry9google2.mooo.com/?token=alexa-3cdbb9b47a4f8afc" loading="lazy" referrerpolicy="no-referrer"></iframe></td></tr>
+  <tr><td><iframe src="https://mstry9home.duckdns.org:1338/?token=read1-5e12381731c72406" loading="lazy" referrerpolicy="no-referrer"></iframe></td></tr>
+  <tr><td><iframe src="https://mstry9--nightscout--cmnxw946qpz2.code.run/?token=read1-97a5f0f91c9e024c" loading="lazy" referrerpolicy="no-referrer"></iframe></td></tr>
+</table>
 
 <script>
+// Hide splash
+window.addEventListener("DOMContentLoaded", function () {
+  const splash = document.getElementById("splash");
+  splash.style.opacity = "0";
+  setTimeout(() => splash.style.display = "none", 400);
+});
 
-const sites = [
- {name:"Romania", url:"https://mstry9.nsromania.info/?token=read1-7bcf2859f8c8f39a"},
- {name:"Local Dell", url:"https://mstry9dell.duckdns.org:1338/?token=localread-a0cc5be899ab88f6"},
- {name:"Azure", url:"https://mstry9azure.azurewebsites.net/?token=read1-75f11cf6fb86a6ee"},
- {name:"Romania Online", url:"https://mstry9online.nsromania.info/?token=read1-cee46c0510d61c50"},
- {name:"Google", url:"https://mstry9google.nightscoutfree.com/?token=read1-85949d1e3fd02e59"},
- {name:"Google2", url:"https://mstry9google2.mooo.com/?token=alexa-3cdbb9b47a4f8afc"},
- {name:"Home", url:"https://mstry9home.duckdns.org:1338/?token=read1-5e12381731c72406"},
- {name:"Cloud Run", url:"https://mstry9--nightscout--cmnxw946qpz2.code.run/?token=read1-97a5f0f91c9e024c"}
-];
-
-function parse(siteURL){
-  const u=new URL(siteURL);
-  const token=u.searchParams.get("token");
-  const base=u.origin;
-  return {base,token};
+// Utility functions
+function minutesAgo(ts){
+  return Math.floor((Date.now() - ts)/60000);
 }
 
-function arrow(dir){
- return {
-  Flat:"→",
-  SingleUp:"↑",
-  DoubleUp:"⇈",
-  FortyFiveUp:"↗",
-  FortyFiveDown:"↘",
-  SingleDown:"↓",
-  DoubleDown:"⇊"
- }[dir]||"•";
+function trendArrow(dir){
+  return {
+    Flat:"→",
+    SingleUp:"↑",
+    DoubleUp:"⇈",
+    FortyFiveUp:"↗",
+    FortyFiveDown:"↘",
+    SingleDown:"↓",
+    DoubleDown:"⇊"
+  }[dir]||"•";
 }
 
-function color(v){
- if(v<70)return"#ff3b30";
- if(v<90)return"#ff9500";
- if(v<=160)return"#30d158";
- if(v<=220)return"#ffd60a";
- return"#bf5af2";
+// Create overlay div on top of iframe
+function addOverlay(iframe){
+  const wrapper = document.createElement('div');
+  wrapper.style.position='relative';
+  iframe.parentNode.replaceChild(wrapper,iframe);
+  wrapper.appendChild(iframe);
+
+  const overlay = document.createElement('div');
+  overlay.className='overlay';
+  wrapper.appendChild(overlay);
+  return overlay;
 }
 
-async function loadSite(site){
+// Parse token from URL
+function parseToken(url){
+  const u = new URL(url);
+  return u.searchParams.get("token");
+}
 
- const {base,token}=parse(site.url);
+// Update stale reading highlight
+async function updateTile(iframe, overlay){
+  try{
+    const token = parseToken(iframe.src);
+    const base = iframe.src.split('?')[0];
 
- const headers={
-  "Authorization":"Bearer "+token
- };
+    const res = await fetch(base+'/api/v1/entries.json?count=1', {
+      headers:{'Authorization':'Bearer '+token}
+    });
+    const data = await res.json();
+    if(!data || data.length===0) return;
 
- try{
+    const latest = data[0];
+    const age = minutesAgo(latest.date);
+    const value = latest.sgv;
+    const dir = trendArrow(latest.direction);
 
- const entries=await fetch(base+"/api/v1/entries.json?count=72",{headers}).then(r=>r.json());
+    overlay.textContent = value+' '+dir+' ('+age+'m)';
 
- if(!entries||entries.length===0)return;
-
- const latest=entries[0];
- const prev=entries[1];
-
- const sgv=latest.sgv;
- const delta=prev?sgv-prev.sgv:0;
- const age=Math.floor((Date.now()-latest.date)/60000);
-
- const tile=document.createElement("div");
- tile.className="tile";
-
- if(age>12) tile.style.borderColor="#ff3b30";
- else if(age>7) tile.style.borderColor="#ffd60a";
-
- tile.innerHTML=`
-  <div class="name">${site.name}</div>
-  <div class="value" style="color:${color(sgv)}">${sgv} ${arrow(latest.direction)}</div>
-  <div class="delta">${delta>=0?`+${delta}`:delta}</div>
-  <div class="age">${age} min ago</div>
-  <canvas height="110"></canvas>
- `;
-
- document.getElementById("grid").appendChild(tile);
-
- const ctx=tile.querySelector("canvas").getContext("2d");
-
- const values=entries.slice().reverse().map(e=>e.sgv);
- const labels=entries.slice().reverse().map(e=>new Date(e.date).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}));
-
- new Chart(ctx,{
-  type:"line",
-  data:{labels,datasets:[{
-   data:values,
-   borderColor:"#0a84ff",
-   borderWidth:2,
-   tension:.35,
-   pointRadius:0
-  }]},
-  options:{
-   responsive:true,
-   plugins:{legend:{display:false}},
-   scales:{x:{display:false},y:{display:false,min:50,max:300}}
+    if(age>12) iframe.style.borderColor="#ff3b30";
+    else if(age>7) iframe.style.borderColor="#ffd60a";
+    else iframe.style.borderColor="#2c2c2e";
+  }catch(e){
+    console.log("fail",iframe.src,e);
+    iframe.style.borderColor="#888";
+    overlay.textContent="Error";
   }
- });
-
- }catch(e){
-  console.log("fail",site.name);
- }
 }
+
+// Initialize overlays and periodic refresh
+const iframes = document.querySelectorAll('iframe');
+const overlays = Array.from(iframes).map(addOverlay);
 
 async function refresh(){
- document.getElementById("grid").innerHTML="";
- for(const s of sites) await loadSite(s);
+  for(let i=0;i<iframes.length;i++){
+    await updateTile(iframes[i],overlays[i]);
+  }
 }
 
 refresh();
 setInterval(refresh,60000);
 
 </script>
+
+<footer style="
+  margin-top:60px;
+  padding-top:20px;
+  border-top:1px solid #ddd;
+  text-align:center;
+  font-size:12px;
+  color:#888;
+">
+  Powered by GitHub Pages •
+  <a href="https://freedns.afraid.org/" target="_blank" rel="noopener">
+    Free DNS
+  </a>
+</footer>
+
 </body>
 </html>

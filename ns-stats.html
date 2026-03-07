@@ -4,7 +4,6 @@
   <meta charset="utf-8" />
   <title>Nightscout Stats</title>
 
-  <!-- Force full-screen, no zoom, correct scaling on iPhone PWAs -->
   <meta name="viewport"
         content="width=device-width,
                  initial-scale=1.0,
@@ -89,6 +88,13 @@
       color: #eee;
       border: 1px solid #444;
     }
+
+    #sparkline {
+      width: 100%;
+      height: 100px;
+      margin-top: 1.5rem;
+      display: block;
+    }
   </style>
 </head>
 
@@ -115,11 +121,69 @@
 
     <button id="btn" onclick="loadStats()">Refresh</button>
     <div id="status"></div>
+
+    <canvas id="sparkline"></canvas>
   </div>
 
   <script>
     const BASE_URL = "https://mstry9home.duckdns.org:1338";
     const TOKEN = "read1-5e12381731c72406";
+
+    function drawSparkline(values) {
+      const canvas = document.getElementById("sparkline");
+      const ctx = canvas.getContext("2d");
+
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+
+      canvas.width = width * 2;
+      canvas.height = height * 2;
+      ctx.scale(2, 2);
+
+      ctx.clearRect(0, 0, width, height);
+
+      const now = Date.now();
+      const oneHourAgo = now - 60 * 60 * 1000;
+
+      const recent = values
+        .filter(x => x.date >= oneHourAgo)
+        .sort((a, b) => a.date - b.date);
+
+      if (recent.length < 1) return;
+
+      const clamp = v => Math.min(280, Math.max(50, v));
+
+      const logs = recent.map(p => Math.log(clamp(p.sgv)));
+
+      const minLog = Math.min(...logs);
+      const maxLog = Math.max(...logs);
+
+      // ⭐ Vertical padding to prevent truncation
+      const PAD = 6;
+
+      const scaleY = logVal =>
+        PAD + (height - PAD * 2) -
+        ((logVal - minLog) / (maxLog - minLog)) * (height - PAD * 2);
+
+      const scaleX = (i) =>
+        (i / (recent.length - 1)) * width;
+
+      // ⭐ Dots only — no connecting lines
+      for (let i = 0; i < recent.length; i++) {
+        const p = recent[i];
+        const x = scaleX(i);
+        const y = scaleY(Math.log(clamp(p.sgv)));
+
+        let color = "#00c853"; // green
+        if (p.sgv < 70) color = "#ff5252"; // red
+        else if (p.sgv > 180) color = "#ffeb3b"; // yellow
+
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
 
     async function loadStats() {
       const btn = document.getElementById("btn");
@@ -138,7 +202,10 @@
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        const values = data.map(x => x.sgv).filter(v => typeof v === "number");
+
+        const values = data
+          .filter(x => typeof x.sgv === "number")
+          .map(x => ({ sgv: x.sgv, date: new Date(x.dateString).getTime() }));
 
         if (!values.length) {
           status.textContent = "No SGV data available.";
@@ -146,30 +213,31 @@
           return;
         }
 
-        const avg = values.reduce((a,b) => a + b, 0) / values.length;
+        const nums = values.map(v => v.sgv);
+
+        const avg = nums.reduce((a,b) => a + b, 0) / nums.length;
         const a1c = (avg + 46.7) / 28.7;
 
-        const variance = values.reduce((a,b) => a + Math.pow(b - avg, 2), 0) / values.length;
+        const variance = nums.reduce((a,b) => a + Math.pow(b - avg, 2), 0) / nums.length;
         const sd = Math.sqrt(variance);
 
-        const total = values.length;
-        const inRange = values.filter(v => v >= 70 && v <= 180).length;
-        const belowRange = values.filter(v => v < 70).length;
-        const aboveRange = values.filter(v => v > 180).length;
-
-        const tir = (inRange / total) * 100;
-        const tbr = (belowRange / total) * 100;
-        const tar = (aboveRange / total) * 100;
+        const total = nums.length;
+        const inRange = nums.filter(v => v >= 70 && v <= 180).length;
+        const belowRange = nums.filter(v => v < 70).length;
+        const aboveRange = nums.filter(v => v > 180).length;
 
         document.getElementById("avg").textContent = avg.toFixed(1);
         document.getElementById("a1c").textContent = a1c.toFixed(2);
         document.getElementById("sd").textContent = sd.toFixed(1);
 
-        document.getElementById("tir").textContent = tir.toFixed(1) + "%";
-        document.getElementById("tbr").textContent = tbr.toFixed(1) + "%";
-        document.getElementById("tar").textContent = tar.toFixed(1) + "%";
+        document.getElementById("tir").textContent = ((inRange / total) * 100).toFixed(1) + "%";
+        document.getElementById("tbr").textContent = ((belowRange / total) * 100).toFixed(1) + "%";
+        document.getElementById("tar").textContent = ((aboveRange / total) * 100).toFixed(1) + "%";
 
         status.textContent = `Using ${values.length} readings from last ${days} days.`;
+
+        drawSparkline(values);
+
       } catch (e) {
         status.textContent = `Error: ${e.message}`;
       } finally {

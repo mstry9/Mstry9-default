@@ -115,6 +115,9 @@
     <div class="row"><div class="label">Estimated A1c</div><div class="value" id="a1c">–</div></div>
     <div class="row"><div class="label">Standard Deviation</div><div class="value" id="sd">–</div></div>
 
+    <!-- ⭐ NEW CV ROW (exactly where you asked) -->
+    <div class="row"><div class="label">Coefficient of Variation (CV)</div><div class="value" id="cv">–</div></div>
+
     <div class="row"><div class="label">Time in Range (70–180)</div><div class="value" id="tir">–</div></div>
     <div class="row"><div class="label">Below Range (&lt;70)</div><div class="value" id="tbr">–</div></div>
     <div class="row"><div class="label">Above Range (&gt;180)</div><div class="value" id="tar">–</div></div>
@@ -158,7 +161,6 @@
       const minLog = Math.min(...logs);
       const maxLog = Math.max(...logs);
 
-      // ⭐ Vertical padding to prevent truncation
       const PAD = 6;
 
       const scaleY = logVal =>
@@ -168,15 +170,14 @@
       const scaleX = (i) =>
         (i / (recent.length - 1)) * width;
 
-      // ⭐ Dots only — no connecting lines
       for (let i = 0; i < recent.length; i++) {
         const p = recent[i];
         const x = scaleX(i);
         const y = scaleY(Math.log(clamp(p.sgv)));
 
-        let color = "#00c853"; // green
-        if (p.sgv < 70) color = "#ff5252"; // red
-        else if (p.sgv > 180) color = "#ffeb3b"; // yellow
+        let color = "#00c853";
+        if (p.sgv < 70) color = "#ff5252";
+        else if (p.sgv > 180) color = "#ffeb3b";
 
         ctx.fillStyle = color;
         ctx.beginPath();
@@ -221,6 +222,8 @@
         const variance = nums.reduce((a,b) => a + Math.pow(b - avg, 2), 0) / nums.length;
         const sd = Math.sqrt(variance);
 
+        const cv = (sd / avg) * 100;   // ⭐ NEW CV CALCULATION
+
         const total = nums.length;
         const inRange = nums.filter(v => v >= 70 && v <= 180).length;
         const belowRange = nums.filter(v => v < 70).length;
@@ -229,6 +232,7 @@
         document.getElementById("avg").textContent = avg.toFixed(1);
         document.getElementById("a1c").textContent = a1c.toFixed(2);
         document.getElementById("sd").textContent = sd.toFixed(1);
+        document.getElementById("cv").textContent = cv.toFixed(1) + "%";   // ⭐ NEW CV OUTPUT
 
         document.getElementById("tir").textContent = ((inRange / total) * 100).toFixed(1) + "%";
         document.getElementById("tbr").textContent = ((belowRange / total) * 100).toFixed(1) + "%";

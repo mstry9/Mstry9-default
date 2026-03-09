@@ -12,6 +12,10 @@
                  user-scalable=no,
                  viewport-fit=cover">
 
+  <!-- PWA manifest -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#111111">
+
   <style>
     html, body {
       margin: 0;
@@ -42,6 +46,12 @@
     h1 {
       margin-top: 0;
       font-size: 1.4rem;
+    }
+
+    h2 {
+      margin-top: 1.5rem;
+      font-size: 1.2rem;
+      opacity: 0.9;
     }
 
     .row {
@@ -80,13 +90,14 @@
       opacity: 0.8;
     }
 
-    select {
-      margin-bottom: 1rem;
+    select, input {
+      width: 100%;
       padding: 0.4rem;
-      border-radius: 0.4rem;
+      margin-bottom: 0.6rem;
       background: #222;
       color: #eee;
       border: 1px solid #444;
+      border-radius: 0.4rem;
     }
 
     #sparkline {
@@ -95,6 +106,10 @@
       margin-top: 1.5rem;
       display: block;
     }
+
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 
@@ -102,7 +117,30 @@
   <div class="card">
     <h1>Glucose Stats</h1>
 
-    <label for="range">Range:</label>
+    <!-- SETTINGS SECTION -->
+    <h2>Nightscout Server</h2>
+
+    <label for="serverSelect">Select Server:</label>
+    <select id="serverSelect" onchange="changeServer()"></select>
+
+    <button onclick="toggleAddServer()">Add New Server</button>
+
+    <div id="addServerSection" class="hidden">
+      <h3>Add Server</h3>
+
+      <label>Friendly Name:</label>
+      <input id="newName" type="text">
+
+      <label>Nightscout URL:</label>
+      <input id="newUrl" type="text">
+
+      <label>Token:</label>
+      <input id="newToken" type="text">
+
+      <button onclick="saveNewServer()">Save Server</button>
+    </div>
+
+    <label for="range" style="margin-top:1.5rem;display:block;">Range:</label>
     <select id="range" onchange="loadStats()">
       <option value="7">7 Days</option>
       <option value="14">14 Days</option>
@@ -115,7 +153,6 @@
     <div class="row"><div class="label">Estimated A1c</div><div class="value" id="a1c">–</div></div>
     <div class="row"><div class="label">Standard Deviation</div><div class="value" id="sd">–</div></div>
 
-    <!-- ⭐ NEW CV ROW (exactly where you asked) -->
     <div class="row"><div class="label">Coefficient of Variation (CV)</div><div class="value" id="cv">–</div></div>
 
     <div class="row"><div class="label">Time in Range (70–180)</div><div class="value" id="tir">–</div></div>
@@ -129,8 +166,77 @@
   </div>
 
   <script>
-    const BASE_URL = "https://mstry9home.duckdns.org:1338";
-    const TOKEN = "read1-5e12381731c72406";
+    const DEFAULT_SERVERS = [
+      {
+        name: "mstry9home",
+        url: "https://mstry9home.duckdns.org:1338",
+        token: "read1-5e12381731c72406"
+      }
+    ];
+
+    function loadServers() {
+      const saved = localStorage.getItem("ns_servers");
+      return saved ? JSON.parse(saved) : DEFAULT_SERVERS;
+    }
+
+    function saveServers(list) {
+      localStorage.setItem("ns_servers", JSON.stringify(list));
+    }
+
+    function getSelectedServer() {
+      const index = localStorage.getItem("ns_selected") || 0;
+      return { index: Number(index), server: loadServers()[index] };
+    }
+
+    function setSelectedServer(index) {
+      localStorage.setItem("ns_selected", index);
+    }
+
+    function populateDropdown() {
+      const servers = loadServers();
+      const select = document.getElementById("serverSelect");
+      select.innerHTML = "";
+
+      servers.forEach((s, i) => {
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.textContent = s.name;
+        select.appendChild(opt);
+      });
+
+      const { index } = getSelectedServer();
+      select.value = index;
+    }
+
+    function toggleAddServer() {
+      const sec = document.getElementById("addServerSection");
+      sec.classList.toggle("hidden");
+    }
+
+    function saveNewServer() {
+      const name = document.getElementById("newName").value.trim();
+      const url = document.getElementById("newUrl").value.trim();
+      const token = document.getElementById("newToken").value.trim();
+
+      if (!name || !url || !token) return;
+
+      const servers = loadServers();
+      servers.push({ name, url, token });
+      saveServers(servers);
+
+      document.getElementById("newName").value = "";
+      document.getElementById("newUrl").value = "";
+      document.getElementById("newToken").value = "";
+
+      toggleAddServer();
+      populateDropdown();
+    }
+
+    function changeServer() {
+      const index = document.getElementById("serverSelect").value;
+      setSelectedServer(index);
+      loadStats();
+    }
 
     function drawSparkline(values) {
       const canvas = document.getElementById("sparkline");
@@ -194,6 +300,10 @@
       btn.disabled = true;
       status.textContent = `Loading last ${days} days…`;
 
+      const { server } = getSelectedServer();
+      const BASE_URL = server.url;
+      const TOKEN = server.token;
+
       const now = new Date();
       const past = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
 
@@ -222,7 +332,7 @@
         const variance = nums.reduce((a,b) => a + Math.pow(b - avg, 2), 0) / nums.length;
         const sd = Math.sqrt(variance);
 
-        const cv = (sd / avg) * 100;   // ⭐ NEW CV CALCULATION
+        const cv = (sd / avg) * 100;
 
         const total = nums.length;
         const inRange = nums.filter(v => v >= 70 && v <= 180).length;
@@ -232,7 +342,7 @@
         document.getElementById("avg").textContent = avg.toFixed(1);
         document.getElementById("a1c").textContent = a1c.toFixed(2);
         document.getElementById("sd").textContent = sd.toFixed(1);
-        document.getElementById("cv").textContent = cv.toFixed(1) + "%";   // ⭐ NEW CV OUTPUT
+        document.getElementById("cv").textContent = cv.toFixed(1) + "%";
 
         document.getElementById("tir").textContent = ((inRange / total) * 100).toFixed(1) + "%";
         document.getElementById("tbr").textContent = ((belowRange / total) * 100).toFixed(1) + "%";
@@ -249,7 +359,17 @@
       }
     }
 
-    loadStats();
+    // Register service worker
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").catch(() => {});
+      });
+    }
+
+    window.onload = () => {
+      populateDropdown();
+      loadStats();
+    };
   </script>
 </body>
 </html>

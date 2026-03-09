@@ -1,375 +1,127 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Nightscout Stats</title>
-
-  <meta name="viewport"
-        content="width=device-width,
-                 initial-scale=1.0,
-                 maximum-scale=1.0,
-                 minimum-scale=1.0,
-                 user-scalable=no,
-                 viewport-fit=cover">
-
-  <!-- PWA manifest -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#111111">
-
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      background: #111;
-      font-family: system-ui, sans-serif;
-      color: #eee;
-    }
-
+<meta charset="UTF-8">
+<title>NS Stats</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
     body {
-      position: fixed;
-      inset: 0;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
+        background: #000;
+        color: cyan;
+        font-family: Arial, sans-serif;
+        text-align: center;
+        padding: 20px;
     }
-
-    .card {
-      background: #1b1b1b;
-      padding: 1.5rem;
-      border-radius: 0.75rem;
-      width: calc(100% - 2rem);
-      max-width: 600px;
-      margin: 1rem auto;
-    }
-
-    h1 {
-      margin-top: 0;
-      font-size: 1.4rem;
-    }
-
-    h2 {
-      margin-top: 1.5rem;
-      font-size: 1.2rem;
-      opacity: 0.9;
-    }
-
-    .row {
-      display: flex;
-      justify-content: space-between;
-      margin: 0.4rem 0;
-    }
-
-    .label {
-      opacity: 0.8;
-    }
-
-    .value {
-      font-weight: 600;
-    }
-
-    button {
-      margin-top: 1rem;
-      padding: 0.5rem 1rem;
-      border-radius: 0.5rem;
-      border: none;
-      cursor: pointer;
-      background: #2f6fed;
-      color: #fff;
-      font-weight: 600;
-    }
-
-    button:disabled {
-      opacity: 0.5;
-      cursor: default;
-    }
-
-    #status {
-      margin-top: 0.75rem;
-      font-size: 0.9rem;
-      opacity: 0.8;
-    }
-
     select, input {
-      width: 100%;
-      padding: 0.4rem;
-      margin-bottom: 0.6rem;
-      background: #222;
-      color: #eee;
-      border: 1px solid #444;
-      border-radius: 0.4rem;
+        padding: 10px;
+        margin: 10px;
+        font-size: 16px;
+        width: 80%;
+        max-width: 300px;
     }
-
-    #sparkline {
-      width: 100%;
-      height: 100px;
-      margin-top: 1.5rem;
-      display: block;
+    button {
+        padding: 10px 20px;
+        margin: 10px;
+        font-size: 16px;
+        background: cyan;
+        border: none;
+        color: black;
+        font-weight: bold;
+        cursor: pointer;
     }
-
-    .hidden {
-      display: none;
+    .server-row {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 5px 0;
     }
-  </style>
+    .server-name {
+        flex: 1;
+        text-align: right;
+        padding-right: 10px;
+    }
+    .delete-btn {
+        background: red;
+        color: white;
+        padding: 5px 10px;
+        font-size: 14px;
+        border: none;
+        cursor: pointer;
+    }
+</style>
 </head>
-
 <body>
-  <div class="card">
-    <h1>Glucose Stats</h1>
 
-    <!-- SETTINGS SECTION -->
-    <h2>Nightscout Server</h2>
+<h1>NS Stats</h1>
 
-    <label for="serverSelect">Select Server:</label>
-    <select id="serverSelect" onchange="changeServer()"></select>
+<h2>Servers</h2>
 
-    <button onclick="toggleAddServer()">Add New Server</button>
+<div id="serverList"></div>
 
-    <div id="addServerSection" class="hidden">
-      <h3>Add Server</h3>
+<h3>Add Server</h3>
+<input id="friendlyName" placeholder="Friendly Name">
+<input id="serverURL" placeholder="Server URL (no trailing slash)">
+<input id="apiToken" placeholder="API Token">
+<button onclick="addServer()">Add Server</button>
 
-      <label>Friendly Name:</label>
-      <input id="newName" type="text">
-
-      <label>Nightscout URL:</label>
-      <input id="newUrl" type="text">
-
-      <label>Token:</label>
-      <input id="newToken" type="text">
-
-      <button onclick="saveNewServer()">Save Server</button>
-    </div>
-
-    <label for="range" style="margin-top:1.5rem;display:block;">Range:</label>
-    <select id="range" onchange="loadStats()">
-      <option value="7">7 Days</option>
-      <option value="14">14 Days</option>
-      <option value="30" selected>30 Days</option>
-      <option value="60">60 Days</option>
-      <option value="90">90 Days</option>
-    </select>
-
-    <div class="row"><div class="label">Average BG</div><div class="value" id="avg">–</div></div>
-    <div class="row"><div class="label">Estimated A1c</div><div class="value" id="a1c">–</div></div>
-    <div class="row"><div class="label">Standard Deviation</div><div class="value" id="sd">–</div></div>
-
-    <div class="row"><div class="label">Coefficient of Variation (CV)</div><div class="value" id="cv">–</div></div>
-
-    <div class="row"><div class="label">Time in Range (70–180)</div><div class="value" id="tir">–</div></div>
-    <div class="row"><div class="label">Below Range (&lt;70)</div><div class="value" id="tbr">–</div></div>
-    <div class="row"><div class="label">Above Range (&gt;180)</div><div class="value" id="tar">–</div></div>
-
-    <button id="btn" onclick="loadStats()">Refresh</button>
-    <div id="status"></div>
-
-    <canvas id="sparkline"></canvas>
-  </div>
-
-  <script>
-    const DEFAULT_SERVERS = [
-      {
-        name: "mstry9home",
-        url: "https://mstry9home.duckdns.org:1338",
-        token: "read1-5e12381731c72406"
-      }
-    ];
-
+<script>
     function loadServers() {
-      const saved = localStorage.getItem("ns_servers");
-      return saved ? JSON.parse(saved) : DEFAULT_SERVERS;
+        const list = document.getElementById("serverList");
+        list.innerHTML = "";
+
+        const servers = JSON.parse(localStorage.getItem("servers") || "[]");
+
+        servers.forEach((srv, index) => {
+            const row = document.createElement("div");
+            row.className = "server-row";
+
+            const name = document.createElement("div");
+            name.className = "server-name";
+            name.textContent = srv.name;
+
+            const del = document.createElement("button");
+            del.className = "delete-btn";
+            del.textContent = "Delete";
+            del.onclick = () => deleteServer(index);
+
+            row.appendChild(name);
+            row.appendChild(del);
+            list.appendChild(row);
+        });
     }
 
-    function saveServers(list) {
-      localStorage.setItem("ns_servers", JSON.stringify(list));
+    function addServer() {
+        const name = document.getElementById("friendlyName").value.trim();
+        const url = document.getElementById("serverURL").value.trim();
+        const token = document.getElementById("apiToken").value.trim();
+
+        if (!name || !url || !token) return;
+
+        const servers = JSON.parse(localStorage.getItem("servers") || "[]");
+
+        servers.push({ name, url, token });
+
+        localStorage.setItem("servers", JSON.stringify(servers));
+
+        document.getElementById("friendlyName").value = "";
+        document.getElementById("serverURL").value = "";
+        document.getElementById("apiToken").value = "";
+
+        loadServers();
     }
 
-    function getSelectedServer() {
-      const index = localStorage.getItem("ns_selected") || 0;
-      return { index: Number(index), server: loadServers()[index] };
+    function deleteServer(index) {
+        const servers = JSON.parse(localStorage.getItem("servers") || "[]");
+
+        servers.splice(index, 1);
+
+        localStorage.setItem("servers", JSON.stringify(servers));
+
+        loadServers();
     }
 
-    function setSelectedServer(index) {
-      localStorage.setItem("ns_selected", index);
-    }
+    loadServers();
+</script>
 
-    function populateDropdown() {
-      const servers = loadServers();
-      const select = document.getElementById("serverSelect");
-      select.innerHTML = "";
-
-      servers.forEach((s, i) => {
-        const opt = document.createElement("option");
-        opt.value = i;
-        opt.textContent = s.name;
-        select.appendChild(opt);
-      });
-
-      const { index } = getSelectedServer();
-      select.value = index;
-    }
-
-    function toggleAddServer() {
-      const sec = document.getElementById("addServerSection");
-      sec.classList.toggle("hidden");
-    }
-
-    function saveNewServer() {
-      const name = document.getElementById("newName").value.trim();
-      const url = document.getElementById("newUrl").value.trim();
-      const token = document.getElementById("newToken").value.trim();
-
-      if (!name || !url || !token) return;
-
-      const servers = loadServers();
-      servers.push({ name, url, token });
-      saveServers(servers);
-
-      document.getElementById("newName").value = "";
-      document.getElementById("newUrl").value = "";
-      document.getElementById("newToken").value = "";
-
-      toggleAddServer();
-      populateDropdown();
-    }
-
-    function changeServer() {
-      const index = document.getElementById("serverSelect").value;
-      setSelectedServer(index);
-      loadStats();
-    }
-
-    function drawSparkline(values) {
-      const canvas = document.getElementById("sparkline");
-      const ctx = canvas.getContext("2d");
-
-      const width = canvas.clientWidth;
-      const height = canvas.clientHeight;
-
-      canvas.width = width * 2;
-      canvas.height = height * 2;
-      ctx.scale(2, 2);
-
-      ctx.clearRect(0, 0, width, height);
-
-      const now = Date.now();
-      const oneHourAgo = now - 60 * 60 * 1000;
-
-      const recent = values
-        .filter(x => x.date >= oneHourAgo)
-        .sort((a, b) => a.date - b.date);
-
-      if (recent.length < 1) return;
-
-      const clamp = v => Math.min(280, Math.max(50, v));
-
-      const logs = recent.map(p => Math.log(clamp(p.sgv)));
-
-      const minLog = Math.min(...logs);
-      const maxLog = Math.max(...logs);
-
-      const PAD = 6;
-
-      const scaleY = logVal =>
-        PAD + (height - PAD * 2) -
-        ((logVal - minLog) / (maxLog - minLog)) * (height - PAD * 2);
-
-      const scaleX = (i) =>
-        (i / (recent.length - 1)) * width;
-
-      for (let i = 0; i < recent.length; i++) {
-        const p = recent[i];
-        const x = scaleX(i);
-        const y = scaleY(Math.log(clamp(p.sgv)));
-
-        let color = "#00c853";
-        if (p.sgv < 70) color = "#ff5252";
-        else if (p.sgv > 180) color = "#ffeb3b";
-
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(x, y, 3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    async function loadStats() {
-      const btn = document.getElementById("btn");
-      const status = document.getElementById("status");
-      const days = parseInt(document.getElementById("range").value, 10);
-
-      btn.disabled = true;
-      status.textContent = `Loading last ${days} days…`;
-
-      const { server } = getSelectedServer();
-      const BASE_URL = server.url;
-      const TOKEN = server.token;
-
-      const now = new Date();
-      const past = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
-
-      const url = `${BASE_URL}/api/v1/entries/sgv.json?find[dateString][$gte]=${encodeURIComponent(past)}&count=0&token=${TOKEN}`;
-
-      try {
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-
-        const values = data
-          .filter(x => typeof x.sgv === "number")
-          .map(x => ({ sgv: x.sgv, date: new Date(x.dateString).getTime() }));
-
-        if (!values.length) {
-          status.textContent = "No SGV data available.";
-          btn.disabled = false;
-          return;
-        }
-
-        const nums = values.map(v => v.sgv);
-
-        const avg = nums.reduce((a,b) => a + b, 0) / nums.length;
-        const a1c = (avg + 46.7) / 28.7;
-
-        const variance = nums.reduce((a,b) => a + Math.pow(b - avg, 2), 0) / nums.length;
-        const sd = Math.sqrt(variance);
-
-        const cv = (sd / avg) * 100;
-
-        const total = nums.length;
-        const inRange = nums.filter(v => v >= 70 && v <= 180).length;
-        const belowRange = nums.filter(v => v < 70).length;
-        const aboveRange = nums.filter(v => v > 180).length;
-
-        document.getElementById("avg").textContent = avg.toFixed(1);
-        document.getElementById("a1c").textContent = a1c.toFixed(2);
-        document.getElementById("sd").textContent = sd.toFixed(1);
-        document.getElementById("cv").textContent = cv.toFixed(1) + "%";
-
-        document.getElementById("tir").textContent = ((inRange / total) * 100).toFixed(1) + "%";
-        document.getElementById("tbr").textContent = ((belowRange / total) * 100).toFixed(1) + "%";
-        document.getElementById("tar").textContent = ((aboveRange / total) * 100).toFixed(1) + "%";
-
-        status.textContent = `Using ${values.length} readings from last ${days} days.`;
-
-        drawSparkline(values);
-
-      } catch (e) {
-        status.textContent = `Error: ${e.message}`;
-      } finally {
-        btn.disabled = false;
-      }
-    }
-
-    // Register service worker
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("sw.js").catch(() => {});
-      });
-    }
-
-    window.onload = () => {
-      populateDropdown();
-      loadStats();
-    };
-  </script>
 </body>
 </html>

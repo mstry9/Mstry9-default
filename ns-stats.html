@@ -12,7 +12,6 @@
                  user-scalable=no,
                  viewport-fit=cover">
 
-  <!-- PWA manifest -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#111111">
 
@@ -107,20 +106,54 @@
       display: block;
     }
 
+    /* Bulletproof hidden */
     .hidden {
-      display: none;
+      display: none !important;
     }
 
-    /* Delete button styling */
-    .delete-btn {
-      background: #c62828;
-      color: white;
-      padding: 0.3rem 0.6rem;
+    /* Custom selector */
+    .selector-box {
+      background: #222;
+      padding: 0.6rem;
       border-radius: 0.4rem;
-      border: none;
-      margin-left: 0.5rem;
+      border: 1px solid #444;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       cursor: pointer;
-      font-size: 0.8rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .selector-label {
+      opacity: 0.9;
+    }
+
+    .selector-arrow {
+      opacity: 0.6;
+    }
+
+    /* Modal sheet */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    .modal {
+      background: #1e1e1e;
+      padding: 1rem;
+      border-radius: 0.75rem;
+      width: 90%;
+      max-width: 350px;
+    }
+
+    .modal h3 {
+      margin-top: 0;
+      text-align: center;
     }
 
     .server-row {
@@ -128,9 +161,25 @@
       justify-content: space-between;
       align-items: center;
       background: #222;
-      padding: 0.4rem 0.6rem;
+      padding: 0.5rem 0.7rem;
       border-radius: 0.4rem;
-      margin-bottom: 0.4rem;
+      margin: 0.4rem 0;
+    }
+
+    .delete-btn {
+      background: #c62828;
+      color: white;
+      padding: 0.3rem 0.6rem;
+      border-radius: 0.4rem;
+      border: none;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    .close-btn {
+      background: #444;
+      width: 100%;
+      margin-top: 1rem;
     }
   </style>
 </head>
@@ -139,14 +188,22 @@
   <div class="card">
     <h1>Glucose Stats</h1>
 
-    <!-- SETTINGS SECTION -->
     <h2>Nightscout Server</h2>
 
-    <label for="serverSelect">Select Server:</label>
-    <select id="serverSelect" onchange="changeServer()"></select>
+    <!-- Custom selector -->
+    <div class="selector-box" onclick="openServerModal()">
+      <div class="selector-label" id="currentServerLabel">Loading…</div>
+      <div class="selector-arrow">▼</div>
+    </div>
 
-    <!-- NEW: Server list with delete buttons -->
-    <div id="serverList"></div>
+    <!-- Modal sheet -->
+    <div id="serverModal" class="modal-overlay hidden">
+      <div class="modal" id="serverModalBox">
+        <h3>Select Server</h3>
+        <div id="serverList"></div>
+        <button class="close-btn" onclick="closeServerModal()">Close</button>
+      </div>
+    </div>
 
     <button onclick="toggleAddServer()">Add New Server</button>
 
@@ -167,9 +224,9 @@
 
     <label for="range" style="margin-top:1.5rem;display:block;">Range:</label>
     <select id="range" onchange="loadStats()">
-      <option value="7">7 Days</option>
+      <option value="7" selected>7 Days</option>
       <option value="14">14 Days</option>
-      <option value="30" selected>30 Days</option>
+      <option value="30">30 Days</option>
       <option value="60">60 Days</option>
       <option value="90">90 Days</option>
     </select>
@@ -217,25 +274,24 @@
       localStorage.setItem("ns_selected", index);
     }
 
-    function populateDropdown() {
-      const servers = loadServers();
-      const select = document.getElementById("serverSelect");
-      select.innerHTML = "";
-
-      servers.forEach((s, i) => {
-        const opt = document.createElement("option");
-        opt.value = i;
-        opt.textContent = s.name;
-        select.appendChild(opt);
-      });
-
-      const { index } = getSelectedServer();
-      select.value = index;
-
-      renderServerList();
+    function openServerModal() {
+      document.getElementById("serverModal").classList.remove("hidden");
     }
 
-    /* NEW: Render server list with delete buttons */
+    function closeServerModal() {
+      document.getElementById("serverModal").classList.add("hidden");
+    }
+
+    // Close when clicking outside modal box
+    document.getElementById("serverModal").addEventListener("click", () => {
+      closeServerModal();
+    });
+
+    // Prevent closing when clicking inside modal box
+    document.getElementById("serverModalBox").addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
+
     function renderServerList() {
       const servers = loadServers();
       const container = document.getElementById("serverList");
@@ -247,11 +303,21 @@
 
         const name = document.createElement("div");
         name.textContent = srv.name;
+        name.style.flex = "1";
+        name.onclick = () => {
+          setSelectedServer(i);
+          updateSelectorLabel();
+          closeServerModal();
+          loadStats();
+        };
 
         const del = document.createElement("button");
         del.className = "delete-btn";
-        del.textContent = "Delete";
-        del.onclick = () => deleteServer(i);
+        del.textContent = "❌";
+        del.onclick = (e) => {
+          e.stopPropagation();
+          deleteServer(i);
+        };
 
         row.appendChild(name);
         row.appendChild(del);
@@ -259,7 +325,11 @@
       });
     }
 
-    /* NEW: Delete server */
+    function updateSelectorLabel() {
+      const { server } = getSelectedServer();
+      document.getElementById("currentServerLabel").textContent = server.name;
+    }
+
     function deleteServer(index) {
       const servers = loadServers();
       servers.splice(index, 1);
@@ -270,7 +340,8 @@
         setSelectedServer(0);
       }
 
-      populateDropdown();
+      renderServerList();
+      updateSelectorLabel();
       loadStats();
     }
 
@@ -295,13 +366,8 @@
       document.getElementById("newToken").value = "";
 
       toggleAddServer();
-      populateDropdown();
-    }
-
-    function changeServer() {
-      const index = document.getElementById("serverSelect").value;
-      setSelectedServer(index);
-      loadStats();
+      renderServerList();
+      updateSelectorLabel();
     }
 
     function drawSparkline(values) {
@@ -425,7 +491,6 @@
       }
     }
 
-    // Register service worker
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
         navigator.serviceWorker.register("sw.js").catch(() => {});
@@ -433,10 +498,11 @@
     }
 
     window.onload = () => {
-      populateDropdown();
+      renderServerList();
+      updateSelectorLabel();
       loadStats();
+      closeServerModal(); // Force hidden on load
     };
   </script>
 </body>
 </html>
-

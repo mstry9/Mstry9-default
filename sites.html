@@ -20,34 +20,45 @@ table {
   width: 100%;
   max-width: 1450px;
   margin: auto;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0 16px; /* space between tiles */
 }
 
 td {
   padding: 0;
 }
 
-iframe {
-  width: 100%;
-  height: 500px;
-  border: 4px solid #2c2c2e;
-  display: block;
-  border-radius: 12px;
-  transition: border 0.4s;
+.iframe-wrapper {
   position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 4px solid #2c2c2e;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  background: #1c1c1e;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
-/* Overlay for BG + arrow */
-.overlay {
-  position: absolute;
-  top: 8px;
-  left: 12px;
-  color: white;
-  font-weight: bold;
-  font-size: 18px;
-  text-shadow: 0 0 4px #000;
-  pointer-events: none;
+.iframe-wrapper:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.7);
 }
+
+.iframe-wrapper iframe {
+  width: 100%;
+  height: 500px;
+  border: none;
+  display: block;
+}
+
+/* Colored borders per host*/
+.android { border-color: #1E90FF; }  /* electric blue */
+.dell    { border-color: #4ecdc4; }  /* teal */
+.azure   { border-color: #1e90ff; }  /* blue */
+.google1 { border-color: #feca57; }  /* yellow */
+.flank   { border-color: #9b59b6; }  /* purple */
+.debian  { border-color: #2ecc71; }  /* green */
+.google2 { border-color: #ffa502; }  /* orange */
+.hp-ns   { border-color: #00FF85; }  /* lime green */
 
 /* Splash screen */
 #splash {
@@ -80,102 +91,70 @@ iframe {
 </div>
 
 <table>
-  <tr><td><iframe src="https://mstry9.nsromania.info/?token=read1-7bcf2859f8c8f39a" loading="lazy" referrerpolicy="no-referrer"></iframe></td></tr>
-  <tr><td><iframe src="https://mstry9dell.duckdns.org:1338/?token=localread-a0cc5be899ab88f6" loading="lazy" referrerpolicy="no-referrer"></iframe></td></tr>
-  <tr><td><iframe src="https://mstry9azure.azurewebsites.net/?token=read1-75f11cf6fb86a6ee" loading="lazy" referrerpolicy="no-referrer"></iframe></td></tr>
-  <tr><td><iframe src="https://mstry9online.nsromania.info/?token=read1-cee46c0510d61c50" loading="lazy" referrerpolicy="no-referrer"></iframe></td></tr>
-  <tr><td><iframe src="https://mstry9google.nightscoutfree.com/?token=read1-85949d1e3fd02e59" loading="lazy" referrerpolicy="no-referrer"></iframe></td></tr>
-  <tr><td><iframe src="https://mstry9google2.mooo.com/?token=alexa-3cdbb9b47a4f8afc" loading="lazy" referrerpolicy="no-referrer"></iframe></td></tr>
-  <tr><td><iframe src="https://mstry9home.duckdns.org:1338/?token=read1-5e12381731c72406" loading="lazy" referrerpolicy="no-referrer"></iframe></td></tr>
-  <tr><td><iframe src="https://mstry9--nightscout--cmnxw946qpz2.code.run/?token=read1-97a5f0f91c9e024c" loading="lazy" referrerpolicy="no-referrer"></iframe></td></tr>
+  <tr>
+    <td>
+      <div class="iframe-wrapper android">
+        <iframe src="https://mstry9.nsromania.info/?token=read1-7bcf2859f8c8f39a" loading="lazy" referrerpolicy="no-referrer"></iframe>
+      </div>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <div class="iframe-wrapper dell">
+        <iframe src="https://mstry9dell.duckdns.org:1338/?token=localread-a0cc5be899ab88f6" loading="lazy" referrerpolicy="no-referrer"></iframe>
+      </div>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <div class="iframe-wrapper azure">
+        <iframe src="https://mstry9azure.azurewebsites.net/?token=read1-75f11cf6fb86a6ee" loading="lazy" referrerpolicy="no-referrer"></iframe>
+      </div>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <div class="iframe-wrapper debian">
+        <iframe src="https://mstry9online.nsromania.info/?token=read1-cee46c0510d61c50" loading="lazy" referrerpolicy="no-referrer"></iframe>
+      </div>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <div class="iframe-wrapper google1">
+        <iframe src="https://mstry9google.nightscoutfree.com/?token=read1-85949d1e3fd02e59" loading="lazy" referrerpolicy="no-referrer"></iframe>
+      </div>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <div class="iframe-wrapper google2">
+        <iframe src="https://mstry9google2.mooo.com/?token=alexa-3cdbb9b47a4f8afc" loading="lazy" referrerpolicy="no-referrer"></iframe>
+      </div>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <div class="iframe-wrapper hp-ns">
+        <iframe src="https://mstry9home.duckdns.org:1338/?token=read1-5e12381731c72406" loading="lazy" referrerpolicy="no-referrer"></iframe>
+      </div>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <div class="iframe-wrapper flank">
+        <iframe src="https://mstry9--nightscout--cmnxw946qpz2.code.run/?token=read1-97a5f0f91c9e024c" loading="lazy" referrerpolicy="no-referrer"></iframe>
+      </div>
+    </td>
+  </tr>
 </table>
 
 <script>
-// Hide splash
 window.addEventListener("DOMContentLoaded", function () {
   const splash = document.getElementById("splash");
   splash.style.opacity = "0";
   setTimeout(() => splash.style.display = "none", 400);
 });
-
-// Utility functions
-function minutesAgo(ts){
-  return Math.floor((Date.now() - ts)/60000);
-}
-
-function trendArrow(dir){
-  return {
-    Flat:"→",
-    SingleUp:"↑",
-    DoubleUp:"⇈",
-    FortyFiveUp:"↗",
-    FortyFiveDown:"↘",
-    SingleDown:"↓",
-    DoubleDown:"⇊"
-  }[dir]||"•";
-}
-
-// Create overlay div on top of iframe
-function addOverlay(iframe){
-  const wrapper = document.createElement('div');
-  wrapper.style.position='relative';
-  iframe.parentNode.replaceChild(wrapper,iframe);
-  wrapper.appendChild(iframe);
-
-  const overlay = document.createElement('div');
-  overlay.className='overlay';
-  wrapper.appendChild(overlay);
-  return overlay;
-}
-
-// Parse token from URL
-function parseToken(url){
-  const u = new URL(url);
-  return u.searchParams.get("token");
-}
-
-// Update stale reading highlight
-async function updateTile(iframe, overlay){
-  try{
-    const token = parseToken(iframe.src);
-    const base = iframe.src.split('?')[0];
-
-    const res = await fetch(base+'/api/v1/entries.json?count=1', {
-      headers:{'Authorization':'Bearer '+token}
-    });
-    const data = await res.json();
-    if(!data || data.length===0) return;
-
-    const latest = data[0];
-    const age = minutesAgo(latest.date);
-    const value = latest.sgv;
-    const dir = trendArrow(latest.direction);
-
-    overlay.textContent = value+' '+dir+' ('+age+'m)';
-
-    if(age>12) iframe.style.borderColor="#ff3b30";
-    else if(age>7) iframe.style.borderColor="#ffd60a";
-    else iframe.style.borderColor="#2c2c2e";
-  }catch(e){
-    console.log("fail",iframe.src,e);
-    iframe.style.borderColor="#888";
-    overlay.textContent="Error";
-  }
-}
-
-// Initialize overlays and periodic refresh
-const iframes = document.querySelectorAll('iframe');
-const overlays = Array.from(iframes).map(addOverlay);
-
-async function refresh(){
-  for(let i=0;i<iframes.length;i++){
-    await updateTile(iframes[i],overlays[i]);
-  }
-}
-
-refresh();
-setInterval(refresh,60000);
-
 </script>
 
 <footer style="
